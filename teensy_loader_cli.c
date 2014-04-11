@@ -40,7 +40,7 @@ void usage(void)
 	fprintf(stderr, "\t-r : Use hard reboot if device not online\n");
 	fprintf(stderr, "\t-n : No reboot after programming\n");
 	fprintf(stderr, "\t-v : Verbose output\n");
-#if defined(USE_LIBUSB)
+#if defined(USE_LIBUSB) || defined(USE_APPLE_IOKIT)
 	fprintf(stderr, "\n<MCU> = atmega32u4 | at90usb162 | at90usb646 | at90usb1286 | mk20dx128\n");
 #else
 	fprintf(stderr, "\n<MCU> = atmega32u4 | at90usb162 | at90usb646 | at90usb1286\n");
@@ -512,6 +512,7 @@ void detach_callback(void *context, IOReturn r, void *hid_mgr, IOHIDDeviceRef de
 	p = usb_list;
 	while (p) {
 		if (p->ref == dev) {
+			//printf("detach callback: vid=%04X, pid=%04X\n", p->vid, p->pid);
 			if (prev) {
 				prev->next = p->next;
 			} else {
@@ -603,14 +604,24 @@ int teensy_open(void)
 int teensy_write(void *buf, int len, double timeout)
 {
 	IOReturn ret;
+	int tries = 0;
 
 	// timeouts do not work on OS-X
 	// IOHIDDeviceSetReportWithCallback is not implemented
 	// even though Apple documents it with a code example!
 	// submitted to Apple on 22-sep-2009, problem ID 7245050
 	if (!iokit_teensy_reference) return 0;
-	ret = IOHIDDeviceSetReport(iokit_teensy_reference,
-		kIOHIDReportTypeOutput, 0, buf, len);
+
+	//On OS X upload often fails with a spourious error.
+	//We simply try again 10 times. Not nice but it works.
+	while(tries++ < 10) {
+		ret = IOHIDDeviceSetReport(iokit_teensy_reference,
+			kIOHIDReportTypeOutput, 0, buf, len);
+		//printf("res %i: %x\n", tries, ret);
+		if(ret == kIOReturnSuccess) break;
+		usleep(10000);
+	}
+
 	if (ret == kIOReturnSuccess) return 1;
 	return 0;
 }
@@ -988,7 +999,7 @@ void parse_options(int argc, char **argv)
 				} else if (strcasecmp(arg+6, "at90usb1286") == 0) {
 					code_size = 130048;
 					block_size = 256;
-#if defined(USE_LIBUSB)
+#if defined(USE_LIBUSB) || defined(USE_APPLE_IOKIT)
 				} else if (strcasecmp(arg+6, "mk20dx128") == 0) {
 					code_size = 131072;
 					block_size = 1024;
