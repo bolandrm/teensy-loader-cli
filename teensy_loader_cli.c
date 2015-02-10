@@ -41,7 +41,7 @@ void usage(void)
 	fprintf(stderr, "\t-n : No reboot after programming\n");
 	fprintf(stderr, "\t-v : Verbose output\n");
 #if defined(USE_LIBUSB) || defined(USE_APPLE_IOKIT)
-	fprintf(stderr, "\n<MCU> = atmega32u4 | at90usb162 | at90usb646 | at90usb1286 | mk20dx128\n");
+	fprintf(stderr, "\n<MCU> = atmega32u4 | at90usb162 | at90usb646 | at90usb1286 | mk20dx128 | mk20dx256\n");
 #else
 	fprintf(stderr, "\n<MCU> = atmega32u4 | at90usb162 | at90usb646 | at90usb1286\n");
 #endif
@@ -240,12 +240,12 @@ usb_dev_handle * open_usb_device(int vid, int pid)
 			// Mac OS-X - removing this call to usb_claim_interface() might allow
 			// this to work, even though it is a clear misuse of the libusb API.
 			// normally Apple's IOKit should be used on Mac OS-X
-			r = usb_claim_interface(h, 0);
-			if (r < 0) {
-				usb_close(h);
-				printf_verbose("Unable to claim interface, check USB permissions");
-				continue;
-			}
+			//r = usb_claim_interface(h, 0);
+			//if (r < 0) {
+			//	usb_close(h);
+		//		printf_verbose("Unable to claim interface, check USB permissions");
+		//		continue;
+		//	}
 			return h;
 		}
 	}
@@ -1003,6 +1003,9 @@ void parse_options(int argc, char **argv)
 				} else if (strcasecmp(arg+6, "mk20dx128") == 0) {
 					code_size = 131072;
 					block_size = 1024;
+        } else if (strcasecmp(arg+6, "mk20dx256") == 0) {
+          code_size = 262144;
+          block_size = 1024;
 #endif
 				} else {
 					die("Unknown MCU type\n");
